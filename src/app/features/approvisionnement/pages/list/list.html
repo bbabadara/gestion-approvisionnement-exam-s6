@@ -1,0 +1,248 @@
+<div class="bg-gray-50 p-6 font-sans">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">Gestion des Approvisionnements</h1>
+    <a routerLink="ajouter" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+      </svg>
+      Nouvel approvisionnement
+    </a>
+  </div>
+
+  <div *ngIf="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <strong class="font-bold">Erreur !</strong>
+    <span class="block sm:inline"> {{ error }}</span>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center py-8">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+    <p class="mt-2 text-gray-600">Chargement des approvisionnements...</p>
+  </div>
+
+  <!-- Filtres et recherche -->
+  <div class="bg-white p-4 rounded-lg shadow mb-6">
+    <h2 class="text-sm font-semibold text-gray-700 mb-4">Filtres et recherche</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <!-- Barre de recherche -->
+      <div class="relative">
+        <input 
+          type="text" 
+          placeholder="Rechercher..." 
+          class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          [(ngModel)]="searchTerm"
+        >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-2.5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+        </svg>
+      </div>
+      
+      <!-- Fournisseurs -->
+      <select 
+        class="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        [(ngModel)]="selectedSupplier"
+      >
+        <option [ngValue]="null">Tous les fournisseurs</option>
+        <option *ngFor="let supplier of suppliers" [ngValue]="supplier.id">{{ supplier.nom }}</option>
+      </select>
+      
+      <!-- Articles -->
+      <select 
+        class="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        [(ngModel)]="selectedArticle"
+      >
+        <option [ngValue]="null">Tous les articles</option>
+        <option *ngFor="let article of availableArticles" [ngValue]="article.id">{{ article.libelle }}</option>
+      </select>
+      
+      <!-- Bouton Filtrer -->
+      <button 
+        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2"
+        (click)="applyFilters()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+        Filtrer
+      </button>
+    </div>
+    
+    <!-- Filtres de date -->
+    <div class="flex flex-col md:flex-row gap-4">
+      <div class="flex items-center gap-2">
+        <label for="startDate" class="text-sm text-gray-600">Du</label>
+        <input 
+          id="startDate"
+          type="date" 
+          class="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          [(ngModel)]="startDate"
+        >
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="endDate" class="text-sm text-gray-600">Au</label>
+        <input 
+          id="endDate"
+          type="date" 
+          class="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          [(ngModel)]="endDate"
+        >
+      </div>
+      <select 
+        class="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        [(ngModel)]="sortOrder"
+      >
+        <option value="desc">Date (récent → ancien)</option>
+        <option value="asc">Date (ancien → récent)</option>
+      </select>
+      <button 
+        class="border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium py-2 px-4 rounded-lg flex items-center gap-2"
+        (click)="resetFilters()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 004 7V6a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm4 8a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1V12z" clip-rule="evenodd" />
+        </svg>
+        Réinitialiser
+      </button>
+    </div>
+  </div>
+
+  <!-- Liste des approvisionnements -->
+  <div *ngIf="!isLoading && !error">
+    <div *ngIf="approvisionnements.length === 0" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4">
+      <p>Aucun approvisionnement trouvé.</p>
+    </div>
+
+    <!-- Tableau des approvisionnements -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fournisseur</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Articles</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant total</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let appro of filteredApprovisionnements">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ getReference(appro) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appro.date | date:'dd/MM/yyyy' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appro.fournisseur.nom }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {{ appro.articles.length }} article{{ appro.articles.length > 1 ? 's' : '' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatMontant(getTotal(appro.articles)) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [class]="getStatusClass(appro.status)">
+                  {{ getStatusText(appro.status) }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <div class="flex space-x-2">
+                  <button 
+                    class="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded"
+                    [routerLink]="['/approvisionnements/modifier', appro.id]"
+                    title="Voir/Modifier"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.542l1.414 1.414-8 8-4-4 1.414-1.414 2.586 2.586 5.414-5.414z" />
+                    </svg>
+                  </button>
+                  <button 
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white p-1 rounded"
+                    *ngIf="appro.status === 'en_attente'"
+                    (click)="markAsReceived(appro.id)"
+                    title="Marquer comme reçu"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.542l1.414 1.414-8 8-4-4 1.414-1.414 2.586 2.586 5.414-5.414z" />
+                    </svg>
+                  </button>
+                  <button 
+                    class="bg-red-500 hover:bg-red-600 text-white p-1 rounded"
+                    (click)="deleteApprovisionnement(appro.id)"
+                    title="Supprimer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h6a1 1 0 100-2H9z" clip-rule="evenodd" />
+                      <path fill-rule="evenodd" d="M16 7a1 1 0 011 1v6a1 1 0 11-2 0V8a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="filteredApprovisionnements.length === 0">
+              <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                Aucun approvisionnement trouvé
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="bg-white px-6 py-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <button 
+              class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              [disabled]="currentPage === 1"
+              (click)="changePage(currentPage - 1)"
+            >
+              Précédent
+            </button>
+            <button 
+              *ngFor="let page of getPageNumbers()"
+              [class.bg-blue-100]="currentPage === page"
+              [class.text-blue-800]="currentPage === page"
+              [class.text-gray-600]="currentPage !== page"
+              class="px-3 py-1 text-sm hover:bg-gray-100 rounded font-medium"
+              (click)="changePage(page)"
+            >
+              {{ page }}
+            </button>
+            <button 
+              class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              [disabled]="currentPage >= totalPages"
+              (click)="changePage(currentPage + 1)"
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques -->
+  <div *ngIf="!isLoading && !error" class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Total des approvisionnements -->
+    <div class="bg-white p-4 rounded-lg shadow">
+      <div class="text-sm text-gray-500 mb-1">Total des approvisionnements</div>
+      <div class="text-2xl font-bold text-blue-600">{{ formatMontant(totalMontant) }}</div>
+      <div class="text-xs text-gray-500 mt-2">Période: {{ getCurrentPeriod() }}</div>
+    </div>
+    
+    <!-- Nombre d'approvisionnements -->
+    <div class="bg-white p-4 rounded-lg shadow">
+      <div class="text-sm text-gray-500 mb-1">Nombre d'approvisionnements</div>
+      <div class="text-2xl font-bold text-gray-800">{{ approvisionnements.length }}</div>
+      <div class="text-xs text-gray-500 mt-2">Période: {{ getCurrentPeriod() }}</div>
+    </div>
+    
+    <!-- Fournisseur principal -->
+    <div class="bg-white p-4 rounded-lg shadow">
+      <div class="text-sm text-gray-500 mb-1">Fournisseur principal</div>
+      <div class="text-2xl font-bold text-cyan-600">{{ mainSupplier?.nom || 'N/A' }}</div>
+      <div class="text-xs text-gray-500 mt-2" *ngIf="mainSupplier">
+        {{ formatMontant(mainSupplierTotal) }} ({{ mainSupplierPercentage.toFixed(1) }}%)
+      </div>
+    </div>
+  </div>
+</div>
